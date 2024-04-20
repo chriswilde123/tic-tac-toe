@@ -18,7 +18,7 @@
         }
 
         h1 {
-            text-align: center;
+            text-align: top;
             color: #007bff; /* Blue header color */
         }
 
@@ -80,10 +80,10 @@
     </style>
 </head>
 <body>
-    <h1>Tic Tac Toe</h1>
+    <h1 style="text-align:top">Tic Tac Toe</h1>
     <div id="game-board"></div>
     <div id="message"></div>
-    <button id="single-player">Single Player</button>
+    <button id="single-player">Single Player</button></br>
     <button id="two-players">Two Players</button>
     <button id="undo">Undo</button>
 
@@ -134,6 +134,9 @@
                 cell.textContent = '';
                 cell.style.pointerEvents = 'auto'; // Enable cell clicks
             });
+            if (gameMode === 'single-player' && currentPlayer === 'O') {
+                setTimeout(makeAIMove, 500); // Wait 500ms before AI makes a move
+            }
         }
 
         // Function to handle cell click
@@ -151,6 +154,9 @@
                 } else {
                     currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
                     message.textContent = `Player ${currentPlayer}'s turn`;
+                    if (gameMode === 'single-player' && currentPlayer === 'O') {
+                        setTimeout(makeAIMove, 500); // Wait 500ms before AI makes a move
+                    }
                 }
             }
         }
@@ -170,6 +176,7 @@
                 }
             }
             return false;
+
         }
 
         // Function to check for a draw
@@ -180,14 +187,101 @@
         // Function to undo the last move
         function undoMove() {
             if (gameMode === 'two-players') {
-                const lastMove = cells.filter(cell => cell.textContent !== '').pop();
-                if (lastMove) {
-                    lastMove.textContent = '';
-                    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-                    message.textContent = `Player ${currentPlayer}'s turn`;
+                for (let i = cells.length - 1; i >= 0; i--) {
+                    if (cells[i].textContent !== '') {
+                        cells[i].textContent = '';
+                        currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                        message.textContent = `Player ${currentPlayer}'s turn`;
+                        break; // Exit the loop after undoing one move
+                    }
                 }
             }
+
         }
+
+        
+        // Function for AI to make a move
+        function makeAIMove() {
+            const emptyCells = cells.filter(cell => cell.textContent === '');
+            let bestMove = null;
+            let bestScore = -Infinity;
+            
+            // Iterate over empty cells and evaluate the best move
+            emptyCells.forEach(cell => {
+                const { row, col } = cell.dataset;
+                cell.textContent = 'O';
+                const score = minimax(cells, 0, false);
+                cell.textContent = '';
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = { row, col };
+                }
+            });
+            
+            // Make the best move
+            const moveIndex = bestMove.row * 3 + parseInt(bestMove.col);
+            cells[moveIndex].textContent = 'O';
+
+            if (checkWinner()) {
+                message.textContent = `Player O wins! 🎉`;
+                message.classList.add('show'); // Show message
+                cells.forEach(cell => cell.style.pointerEvents = 'none'); // Disable further clicks
+            } else if (checkDraw()) {
+                message.textContent = "It's a draw!";
+                message.classList.add('show'); // Show message
+            } else {
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                message.textContent = `Player ${currentPlayer}'s turn`;
+            }
+        }
+
+        // Minimax algorithm for AI move evaluation
+        function minimax(cells, depth, isMaximizing) {
+            if (checkWinner() || checkDraw()) {
+                return evaluate(cells);
+            }
+
+            if (isMaximizing) {
+                let bestScore = -Infinity;
+                cells.forEach(cell => {
+                    if (cell.textContent === '') {
+                        cell.textContent = 'O';
+                        const score = minimax(cells, depth + 1, false);
+                        cell.textContent = '';
+                        bestScore = Math.max(bestScore, score);
+                    }
+                });
+                return bestScore;
+            } else {
+                let bestScore = Infinity;
+                cells.forEach(cell => {
+                    if (cell.textContent === '') {
+                        cell.textContent = 'X';
+                        const score = minimax(cells, depth + 1, true);
+                        cell.textContent = '';
+                        bestScore = Math.min(bestScore, score);
+                    }
+                });
+                return bestScore;
+            }
+        }
+
+        // Evaluation function for game state
+        function evaluate(cells) {
+            // Check for a winner and return a high score if AI wins, low score if human wins
+            if (checkWinner()) {
+                return currentPlayer === 'O' ? 10 : -10;
+            }
+            // Return 0 for a draw
+            if (checkDraw()) {
+                return 0;
+            }
+            return 0; // Default value
+        }
+
     </script>
 </body>
 </html>
+
+
