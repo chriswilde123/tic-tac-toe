@@ -7,219 +7,187 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-        background-color: #f5f5f5; /* Background color */
-        margin: 0;
-        padding: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        }
-
-        .container {
-            text-align: center;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: #f0f0f0;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
 
         h1 {
-            color: #333;
+            text-align: center;
+            color: #007bff; /* Blue header color */
         }
 
-        .board {
+        #game-board {
             display: grid;
             grid-template-columns: repeat(3, 100px);
             grid-template-rows: repeat(3, 100px);
-            gap: 2px;
             margin: 20px auto;
+            border: 3px solid #007bff; /* Blue border */
+            border-radius: 5px;
+            background-color: #fff; /* White background */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Shadow */
         }
 
         .cell {
             width: 100px;
             height: 100px;
-            background-color: #f0f0f0;
+            border: 1px solid #ccc; /* Light gray border */
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 3em;
+            font-size: 2em;
             cursor: pointer;
             transition: background-color 0.3s ease;
         }
 
         .cell:hover {
-            background-color: #ddd;
+            background-color: #f8f9fa; /* Light gray background on hover */
+        }
+
+        #message {
+            margin-top: 20px;
+            text-align: center;
+            font-weight: bold;
+            color: #007bff; /* Blue message color */
+            display: none; /* Hide message initially */
+        }
+
+        #message.show {
+            display: block; /* Show message when necessary */
         }
 
         button {
-            background-color: #4CAF50;
-            color: white;
+            display: block;
+            margin: 10px auto;
             padding: 10px 20px;
+            font-size: 1em;
             border: none;
             border-radius: 5px;
+            background-color: #007bff; /* Blue button background */
+            color: #fff; /* White button text */
             cursor: pointer;
-            font-size: 16px;
             transition: background-color 0.3s ease;
         }
 
         button:hover {
-            background-color: #45a049;
-        }
-
-        .message {
-            margin-top: 20px;
-            font-size: 1.2em;
-            color: #333;
+            background-color: #0056b3; /* Darker blue on hover */
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Tic Tac Toe</h1>
-        <div class="board" id="board"></div>
-        <button onclick="startGame()">Start New Game</button>
-        <div class="message"></div>
-    </div>
+    <h1>Tic Tac Toe</h1>
+    <div id="game-board"></div>
+    <div id="message"></div>
+    <button id="single-player">Single Player</button>
+    <button id="two-players">Two Players</button>
+    <button id="undo">Undo</button>
 
     <script>
-        let board = ['', '', '', '', '', '', '', '', ''];
+        const board = document.getElementById('game-board');
+        const message = document.getElementById('message');
+        const singlePlayerBtn = document.getElementById('single-player');
+        const twoPlayersBtn = document.getElementById('two-players');
+        const undoBtn = document.getElementById('undo');
+        const cells = [];
+
         let currentPlayer = 'X';
-        let gameInProgress = false;
-        let singlePlayerMode = false;
+        let gameMode = '';
 
-        const winningCombos = [
-            [0, 1, 2], [3, 4, 5], [6, 7, 8],
-            [0, 3, 6], [1, 4, 7], [2, 5, 8],
-            [0, 4, 8], [2, 4, 6]
-        ];
-
-        const strategicPositions = [4, 0, 2, 6, 8, 1, 3, 5, 7];
-
-        function startGame() {
-            board = ['', '', '', '', '', '', '', '', ''];
-            currentPlayer = 'X';
-            gameInProgress = true;
-            singlePlayerMode = confirm("Play against AI?");
-
-            const boardDiv = document.getElementById('board');
-            boardDiv.innerHTML = '';
-
-            for (let i = 0; i < 9; i++) {
+        // Initialize game board
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
                 const cell = document.createElement('div');
                 cell.classList.add('cell');
-                cell.dataset.index = i;
-                cell.addEventListener('click', () => makeMove(i));
-                boardDiv.appendChild(cell);
-            }
-
-            if (singlePlayerMode && currentPlayer === 'O') {
-                makeAiMove();
+                cell.dataset.row = i;
+                cell.dataset.col = j;
+                cell.addEventListener('click', handleCellClick);
+                cells.push(cell);
+                board.appendChild(cell);
             }
         }
 
-        function makeMove(index) {
-            if (!gameInProgress || board[index] !== '') return;
+        // Event listener for game mode selection
+        singlePlayerBtn.addEventListener('click', () => {
+            gameMode = 'single-player';
+            startGame();
+        });
 
-            board[index] = currentPlayer;
-            renderBoard();
+        twoPlayersBtn.addEventListener('click', () => {
+            gameMode = 'two-players';
+            startGame();
+        });
 
-            if (checkWinner()) {
-                alert(`${currentPlayer} wins!`);
-                gameInProgress = false;
-                return;
-            }
+        // Event listener for undo button
+        undoBtn.addEventListener('click', undoMove);
 
-            if (!board.includes('')) {
-                alert("It's a draw!");
-                gameInProgress = false;
-                return;
-            }
-
-            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-
-            if (singlePlayerMode && currentPlayer === 'O') {
-                makeAiMove();
-            }
-        }
-
-        function makeAiMove() {
-            let aiMove = findBestMove();
-            board[aiMove] = 'O';
-            renderBoard();
-
-            if (checkWinner()) {
-                alert('AI wins!');
-                gameInProgress = false;
-                return;
-            }
-
-            if (!board.includes('')) {
-                alert("It's a draw!");
-                gameInProgress = false;
-                return;
-            }
-
+        // Function to start the game
+        function startGame() {
             currentPlayer = 'X';
+            message.textContent = `Player ${currentPlayer}'s turn`;
+            message.classList.remove('show'); // Hide message
+            cells.forEach(cell => {
+                cell.textContent = '';
+                cell.style.pointerEvents = 'auto'; // Enable cell clicks
+            });
         }
 
-        function findBestMove() {
-            // Check for winning move
-            for (let i = 0; i < 9; i++) {
-                if (board[i] === '') {
-                    board[i] = 'O';
-                    if (checkWinner()) {
-                        board[i] = '';
-                        return i;
-                    }
-                    board[i] = '';
+        // Function to handle cell click
+        function handleCellClick(event) {
+            const cell = event.target;
+            if (cell.textContent === '' && !checkWinner()) {
+                cell.textContent = currentPlayer;
+                if (checkWinner()) {
+                    message.textContent = `Player ${currentPlayer} wins! 🎉`;
+                    message.classList.add('show'); // Show message
+                    cells.forEach(cell => cell.style.pointerEvents = 'none'); // Disable further clicks
+                } else if (checkDraw()) {
+                    message.textContent = "It's a draw!";
+                    message.classList.add('show'); // Show message
+                } else {
+                    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                    message.textContent = `Player ${currentPlayer}'s turn`;
                 }
             }
-
-            // Check for blocking move
-            for (let i = 0; i < 9; i++) {
-                if (board[i] === '') {
-                    board[i] = 'X';
-                    if (checkWinner()) {
-                        board[i] = '';
-                        return i;
-                    }
-                    board[i] = '';
-                }
-            }
-
-            // Choose a strategic move
-            for (let pos of strategicPositions) {
-                if (board[pos] === '') {
-                    return pos;
-                }
-            }
-
-            // If no strategic move available, choose randomly
-            let availableMoves = board.reduce((acc, cell, index) => {
-                if (cell === '') acc.push(index);
-                return acc;
-            }, []);
-            return availableMoves[Math.floor(Math.random() * availableMoves.length)];
         }
 
+        // Function to check for a winner
         function checkWinner() {
-            for (let combo of winningCombos) {
-                if (board[combo[0]] && board[combo[0]] === board[combo[1]] && board[combo[0]] === board[combo[2]]) {
+            const winningCombinations = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+
+            for (const combo of winningCombinations) {
+                const [a, b, c] = combo;
+                if (cells[a].textContent && cells[a].textContent === cells[b].textContent && cells[a].textContent === cells[c].textContent) {
                     return true;
                 }
             }
             return false;
         }
 
-        function renderBoard() {
-            const cells = document.querySelectorAll('.cell');
-            cells.forEach((cell, index) => {
-                cell.textContent = board[index];
-            });
+        // Function to check for a draw
+        function checkDraw() {
+            return cells.every(cell => cell.textContent !== '');
         }
 
-        startGame();
+        // Function to undo the last move
+        function undoMove() {
+            if (gameMode === 'two-players') {
+                const lastMove = cells.filter(cell => cell.textContent !== '').pop();
+                if (lastMove) {
+                    lastMove.textContent = '';
+                    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                    message.textContent = `Player ${currentPlayer}'s turn`;
+                }
+            }
+        }
     </script>
 </body>
 </html>
